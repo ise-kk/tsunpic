@@ -1,5 +1,6 @@
 /**
  * 端末内の保存(IndexedDB)。写真はこの端末から外に出さない。
+ * 元の写真は保存せず、作品のサイズに合わせて軽くした画像だけを保存する。
  */
 import Dexie, { type EntityTable } from 'dexie'
 import type { Lab } from '../lib/color'
@@ -9,6 +10,8 @@ export type Work = {
   title: string
   /** 1辺のマス数(6 なら 36枚のアート) */
   size: number
+  /** 色の補正の強さ(0〜60、0 は補正なし) */
+  correction?: number
   createdAt: number
   updatedAt: number
 }
@@ -16,12 +19,14 @@ export type Work = {
 export type Photo = {
   id: string
   workId: string
-  /** 元の写真(画質を落とさない) */
-  original: Blob
-  /** 表示・書き出し用の縮小版(長辺 512px、メタデータなし) */
+  /** マス目・書き出し用の縮小版(メタデータなし) */
   thumb: Blob
+  /** 1枚ずつ見るための画像(メタデータなし)。古いデータでは無いことがある */
+  image?: Blob
+  /** v0.2 までの元の写真。起動時に軽い画像へ変換して消す */
+  original?: Blob
   color: Lab
-  /** アプリ内で撮った写真か(写真アプリへの保存をすすめるため) */
+  /** アプリ内で撮った写真か */
   captured: boolean
   addedAt: number
 }

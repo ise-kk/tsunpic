@@ -1,20 +1,23 @@
 /**
  * 作品と写真の読み書き。画面からはここを通して保存する。
  */
+import { maxPhotosFor, profileFor, SIZE_OPTIONS } from '../lib/sizes'
 import { db, newId, requestPersistentStorage, type Photo, type Work } from './db'
 
-export const SIZE_OPTIONS = [3, 4, 5, 6, 8, 10] as const
-/** 1作品に入れられる写真の上限(控えを含む) */
-export const MAX_PHOTOS_PER_WORK = 200
+export { SIZE_OPTIONS }
+
+export const CORRECTION_DEFAULT = 30
+export const CORRECTION_MAX = 60
 
 export async function createWork(size: number): Promise<Work> {
-  if (!SIZE_OPTIONS.includes(size as (typeof SIZE_OPTIONS)[number])) throw new Error('選べないサイズです')
+  profileFor(size) // 選べないサイズならエラー
   const now = Date.now()
   const d = new Date(now)
   const work: Work = {
     id: newId(),
     title: `${d.getMonth() + 1}月${d.getDate()}日の作品`,
     size,
+    correction: 0,
     createdAt: now,
     updatedAt: now,
   }
@@ -29,16 +32,29 @@ export async function renameWork(id: string, title: string): Promise<void> {
   await db.works.update(id, { title: clean, updatedAt: Date.now() })
 }
 
-export async function addPhotos(workId: string, photos: Omit<Photo, 'id' | 'workId' | 'addedAt'>[]): Promise<void> {
+/** 色の補正の強さを変える(0 で補正なし) */
+export async function setCorrection(id: string, value: number): Promise<void> {
+  const v = Math.max(0, Math.min(CORRECTION_MAX, Math.round(value)))
+  await db.works.update(id, { correction: v, updatedAt: Date.now() })
+}
+
+export type NewPhoto = Pick<Photo, 'thumb' | 'image' | 'color' | 'captured'>
+
+export async function addPhotos(workId: string, photos: NewPhoto[]): Promise<string[]> {
   const now = Date.now()
+  const ids = photos.map(() => newId())
   await db.transaction('rw', db.works, db.photos, async () => {
+    const work = await db.works.get(workId)
+    if (!work) throw new Error('作品が見つかりません')
+    const limit = maxPhotosFor(work.size)
     const current = await db.photos.where('workId').equals(workId).count()
-    if (current + photos.length > MAX_PHOTOS_PER_WORK) {
-      throw new LimitError(`1つの作品に入れられる写真は ${MAX_PHOTOS_PER_WORK} 枚までです`)
+    if (current + photos.length > limit) {
+      throw new LimitError(`この作品に入れられる写真は ${limit} 枚までです`)
     }
-    await db.photos.bulkAdd(photos.map((p, i) => ({ ...p, id: newId(), workId, addedAt: now + i })))
+    await db.photos.bulkAdd(photos.map((p, i) => ({ ...p, id: ids[i]!, workId, addedAt: now + i })))
     await db.works.update(workId, { updatedAt: now })
   })
+  return ids
 }
 
 export async function removePhoto(photoId: string): Promise<void> {
