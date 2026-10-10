@@ -1,0 +1,21 @@
+.region {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: calc(var(--space-3) + env(safe-area-inset-top));
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.toast {
+  max-width: min(calc(100% - var(--space-8)), calc(var(--content-max) - var(--space-8)));
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}

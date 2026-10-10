@@ -1,0 +1,117 @@
+/* 画面共通のボタンと部品 */
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--button-h);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary {
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  border: none;
+}
+
+.secondary {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1.5px solid var(--color-line-strong);
+}
+
+.primary:disabled,
+.secondary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.danger {
+  composes: secondary;
+  color: #b42318;
+  border-color: #e7b8b3;
+}
+
+@media (prefers-color-scheme: dark) {
+  .danger {
+    color: #ff8a80;
+    border-color: #5c2b27;
+  }
+}
+
+.iconButton {
+  width: var(--tap-min);
+  height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-pill);
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.row2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: var(--tap-min);
+}
+
+.topTitle {
+  flex: 1;
+  text-align: center;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5) var(--space-6);
+}
+
+.note {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+}
+
+.hiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spacer {
+  flex: 1;
+}
