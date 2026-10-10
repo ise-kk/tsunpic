@@ -1,0 +1,116 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: rgba(20, 19, 17, 0.45);
+}
+
+.card {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  background: var(--color-paper);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin-bottom: var(--space-2);
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.track {
+  fill: none;
+  stroke: var(--color-line);
+  stroke-width: 8;
+}
+
+.bar {
+  fill: none;
+  stroke: var(--color-ink);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.3s ease;
+}
+
+/* 進み具合とは別に、動いていることがわかるよう外側で小さく回る */
+.spinner {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--color-muted);
+  animation: spin 1s linear infinite;
+}
+
+.pct {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+}
+
+.count {
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.sub {
+  font-size: var(--text-sm);
+  color: var(--color-ink-soft);
+}
+
+.note {
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.cancel {
+  margin-top: var(--space-2);
+  min-height: var(--tap-min);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-line-strong);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.cancel:disabled {
+  opacity: 0.5;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 動きを減らす設定では回転を止める(進み具合の輪は残る) */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    display: none;
+  }
+}
