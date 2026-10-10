@@ -115,6 +115,48 @@ export function chooseForGradient<T extends Colored>(items: readonly T[], keep: 
   return { used, bench }
 }
 
+/**
+ * 色の補正で寄せる先の色。順路に沿って写真の色をなめらかにした色を使う
+ * (ユーザーの写真の色合いは保ったまま、色の飛びだけを小さくする)。
+ * @returns マス目と同じ並びの色(空きマスは null)
+ */
+export function correctionTargets(grid: readonly (Colored | null)[], size: number): (Lab | null)[] {
+  const path = diagonalPath(size)
+  const order = path.filter((k) => grid[k])
+  const colors = order.map((k) => grid[k]!.color)
+  const half = Math.max(1, Math.round(colors.length / 12))
+  const out: (Lab | null)[] = new Array<Lab | null>(grid.length).fill(null)
+  order.forEach((k, i) => {
+    let L = 0
+    let a = 0
+    let b = 0
+    let w = 0
+    for (let j = Math.max(0, i - half); j <= Math.min(colors.length - 1, i + half); j++) {
+      // 近いものほど重く
+      const weight = half + 1 - Math.abs(i - j)
+      const c = colors[j]!
+      L += c.L * weight
+      a += c.a * weight
+      b += c.b * weight
+      w += weight
+    }
+    out[k] = vivid({ L: L / w, a: a / w, b: b / w })
+  })
+  return out
+}
+
+/**
+ * なめらかにした色は平均なのでくすみやすい。色味(色相)はそのままに、鮮やかさを少し上げる。
+ * 白・黒・灰色に近い色はそのまま。
+ */
+function vivid(c: Lab): Lab {
+  const C = Math.hypot(c.a, c.b)
+  if (C < 10) return c
+  const target = Math.min(65, Math.max(30, C * 1.5))
+  const k = target / C
+  return { L: c.L * 0.7 + 62 * 0.3, a: c.a * k, b: c.b * k }
+}
+
 export type Placement<T> = { grid: (T | null)[]; bench: T[] }
 
 /**
