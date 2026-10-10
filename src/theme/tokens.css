@@ -1,0 +1,75 @@
+/*
+ * デザイントークン(案A「紙とインク」)
+ * 画面では色・文字・余白・角丸を直接書かず、ここの変数を使う。
+ */
+:root {
+  /* 色:ライト */
+  --color-paper: #fbfaf7;        /* 背景(生成り) */
+  --color-surface: #ffffff;      /* カード */
+  --color-ink: #1f1d1a;          /* 文字・主ボタン */
+  --color-ink-soft: #4a463f;     /* 本文の弱め */
+  --color-muted: #6b665e;        /* 補足(背景上で 4.5:1 以上) */
+  --color-line: #ece8e0;         /* 区切り線 */
+  --color-line-strong: #d9d4ca;  /* 枠線 */
+  --color-empty: #f1eee8;        /* 空きマス */
+  --color-empty-ring: #cfcac0;   /* 空きマスの点線 */
+  --color-on-ink: #ffffff;       /* 主ボタン上の文字 */
+  --color-focus: #3b57c4;        /* フォーカスリング */
+  --color-ok: #2e7d4f;
+
+  /* 文字 */
+  --font-sans: 'Zen Kaku Gothic New', 'Hiragino Sans', 'Yu Gothic UI', 'Noto Sans JP', sans-serif;
+  --text-xs: 0.75rem;   /* 12 */
+  --text-sm: 0.875rem;  /* 14 */
+  --text-md: 1rem;      /* 16 */
+  --text-lg: 1.25rem;   /* 20 */
+  --text-xl: 1.5rem;    /* 24 */
+  --text-2xl: 2rem;     /* 32 */
+  --weight-regular: 400;
+  --weight-bold: 700;
+  --weight-black: 700;
+  --leading: 1.7;
+
+  /* 余白(4の倍数) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* 角丸・影 */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+  --shadow-card: 0 8px 24px rgba(31, 29, 26, 0.08);
+
+  /* 操作 */
+  --tap-min: 44px;
+  --button-h: 52px;
+  --content-max: 480px;
+
+  color-scheme: light dark;
+}
+
+/* 色:ダーク(紙とインクを反転した「夜の紙」) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-paper: #151412;
+    --color-surface: #1f1d1a;
+    --color-ink: #f1eee8;
+    --color-ink-soft: #d3cec4;
+    --color-muted: #a7a196;
+    --color-line: #2c2a26;
+    --color-line-strong: #3d3a35;
+    --color-empty: #24221f;
+    --color-empty-ring: #4a463f;
+    --color-on-ink: #151412;
+    --color-focus: #8ea2ff;
+    --color-ok: #6cc58f;
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+}
