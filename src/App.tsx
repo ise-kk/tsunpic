@@ -1,5 +1,6 @@
 import { HashRouter, Route, Routes } from 'react-router-dom'
 import { AppShell } from './components/AppShell'
+import { MigrationRunner } from './components/MigrationRunner'
 import { ToastProvider } from './components/Toast'
 import { UpdatePrompt } from './components/UpdatePrompt'
 import { HomePage } from './pages/HomePage'
@@ -27,6 +28,7 @@ export function App() {
           </Routes>
         </AppShell>
         <UpdatePrompt />
+        <MigrationRunner />
       </ToastProvider>
     </HashRouter>
   )
