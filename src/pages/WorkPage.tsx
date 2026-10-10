@@ -8,9 +8,20 @@ import ui from '../components/ui.module.css'
 import { Viewer } from '../components/Viewer'
 import { db, type Photo } from '../db/db'
 import { useLive, useThumbUrls } from '../db/hooks'
-import { addPhotos, deleteWork, LimitError, MAX_PHOTOS_PER_WORK, removePhoto, renameWork } from '../db/repo'
-import { arrange } from '../lib/arrange'
+import {
+  addPhotos,
+  CORRECTION_DEFAULT,
+  CORRECTION_MAX,
+  deleteWork,
+  LimitError,
+  removePhoto,
+  renameWork,
+  setCorrection,
+  type NewPhoto,
+} from '../db/repo'
+import { arrange, correctionTargets } from '../lib/arrange'
 import { ImageError, processPhoto, renderMosaic, shareOrDownload } from '../lib/image'
+import { maxPhotosFor } from '../lib/sizes'
 import styles from './WorkPage.module.css'
 
 export function WorkPage() {
@@ -28,12 +39,16 @@ export function WorkPage() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [lastAdded, setLastAdded] = useState<Set<string>>(new Set())
+  /** アプリで撮った直後の写真(写真アプリへの保存をすすめる) */
+  const [captured, setCaptured] = useState<File | null>(null)
   const pickRef = useRef<HTMLInputElement>(null)
   const cameraRef = useRef<HTMLInputElement>(null)
 
   const size = work?.size ?? 6
   const total = size * size
+  const correction = work?.correction ?? 0
   const placement = useMemo(() => arrange(photos ?? [], size), [photos, size])
+  const targets = useMemo(() => correctionTargets(placement.grid, size), [placement, size])
   const filled = placement.grid.filter(Boolean).length
   const complete = filled === total
   // 鑑賞画面で前後に送る順番:マス目の順 → 控え
@@ -43,54 +58,53 @@ export function WorkPage() {
   )
 
   const handleFiles = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>, captured: boolean) => {
+    async (e: ChangeEvent<HTMLInputElement>, isCapture: boolean) => {
       const input = e.currentTarget
       const files = Array.from(input.files ?? [])
       input.value = '' // 同じ写真をもう一度選べるようにする
       if (!work || files.length === 0) return
-      const room = MAX_PHOTOS_PER_WORK - (photos?.length ?? 0)
+      const limit = maxPhotosFor(work.size)
+      const room = limit - (photos?.length ?? 0)
       if (room <= 0) {
-        toast(`1つの作品に入れられる写真は ${MAX_PHOTOS_PER_WORK} 枚までです`)
+        toast(`この作品に入れられる写真は ${limit} 枚までです`)
         return
       }
-      const targets = files.slice(0, room)
+      const targetsFiles = files.slice(0, room)
       const errors: string[] = []
-      const ready: { original: Blob; thumb: Blob; color: Photo['color']; captured: boolean }[] = []
-      setProgress({ done: 0, total: targets.length })
-      for (const [i, file] of targets.entries()) {
+      const ready: NewPhoto[] = []
+      setProgress({ done: 0, total: targetsFiles.length })
+      for (const [i, file] of targetsFiles.entries()) {
         try {
-          const p = await processPhoto(file)
-          ready.push({ ...p, captured })
+          const p = await processPhoto(file, file.name, work.size)
+          ready.push({ ...p, captured: isCapture })
         } catch (err) {
           errors.push(err instanceof ImageError ? err.message : `${file.name} を読み込めませんでした`)
         }
-        setProgress({ done: i + 1, total: targets.length })
+        setProgress({ done: i + 1, total: targetsFiles.length })
       }
       const benchBefore = placement.bench.length
+      let newIds: string[] = []
       try {
-        if (ready.length > 0) await addPhotos(work.id, ready)
+        if (ready.length > 0) newIds = await addPhotos(work.id, ready)
       } catch (err) {
         setProgress(null)
-        toast(
-          err instanceof LimitError
-            ? err.message
-            : '保存できませんでした。端末の空き容量が足りない可能性があります。',
-        )
+        toast(err instanceof LimitError ? err.message : '保存できませんでした。端末の空き容量が足りない可能性があります。')
         return
       }
       setProgress(null)
-      const after = await db.photos.where('workId').equals(work.id).sortBy('addedAt')
-      const newIds = new Set(after.slice(after.length - ready.length).map((p) => p.id))
-      setLastAdded(newIds)
+      setLastAdded(new Set(newIds))
       window.setTimeout(() => setLastAdded(new Set()), 3000)
+      const after = await db.photos.where('workId').equals(work.id).toArray()
       const benchAfter = arrange(after, work.size).bench.length
       const parts: string[] = []
       if (ready.length > 0) parts.push(`${ready.length}枚を入れました`)
       if (benchAfter > benchBefore) parts.push(`${benchAfter - benchBefore}枚を控えに入れました`)
-      if (files.length > targets.length) parts.push(`上限のため ${files.length - targets.length}枚は入れませんでした`)
+      if (files.length > targetsFiles.length) parts.push(`上限のため ${files.length - targetsFiles.length}枚は入れませんでした`)
       if (errors.length > 0) parts.push(`${errors.length}枚は読み込めませんでした`)
       toast(parts.join('。') || '写真を入れられませんでした')
       if (errors.length > 0) console.warn(errors)
+      // アプリで撮った写真は写真アプリに残らないので、保存をすすめる
+      if (isCapture && ready.length > 0 && targetsFiles[0]) setCaptured(targetsFiles[0])
     },
     [work, photos, placement.bench.length, toast],
   )
@@ -102,6 +116,8 @@ export function WorkPage() {
       const blob = await renderMosaic(
         placement.grid.map((p) => p?.thumb ?? null),
         work.size,
+        targets,
+        correction / 100,
       )
       const result = await shareOrDownload(blob, `${safeFileName(work.title)}.jpg`)
       if (result === 'downloaded') toast('画像を保存しました')
@@ -135,10 +151,10 @@ export function WorkPage() {
         <button type="button" className={styles.titleButton} onClick={() => setRenameOpen(true)}>
           <span className={styles.title}>{work.title}</span>
           <span className={styles.sub}>
-            {total}枚のアート <IconEdit size={12} />
+            {total}枚のアート{correction > 0 ? ` · 補正 ${correction}%` : ''} <IconEdit size={12} />
           </span>
         </button>
-        <button type="button" className={ui.iconButton} onClick={() => setMenuOpen(true)} aria-label="メニュー">
+        <button type="button" className={ui.iconButton} onClick={() => setMenuOpen(true)} aria-label="作品のメニュー">
           <IconMore />
         </button>
       </div>
@@ -147,6 +163,8 @@ export function WorkPage() {
         grid={placement.grid}
         size={work.size}
         urls={urls}
+        targets={targets}
+        strength={correction / 100}
         highlightIds={lastAdded}
         onOpen={(pid) => setViewerIndex(viewList.findIndex((p) => p.id === pid))}
       />
@@ -220,7 +238,7 @@ export function WorkPage() {
           </h2>
           <p className={ui.note}>グラデーションに合いにくい写真です。作品の写真を外すと、合うものが自動で入ります。</p>
           <div className={styles.benchList}>
-            {placement.bench.map((p) => (
+            {placement.bench.slice(0, 60).map((p) => (
               <button
                 key={p.id}
                 type="button"
@@ -253,20 +271,21 @@ export function WorkPage() {
           benchFrom={viewList.length - placement.bench.length}
           onIndex={setViewerIndex}
           onClose={() => setViewerIndex(null)}
-          onSaveOriginal={async (p) => {
-            const r = await shareOrDownload(p.original, `photo-${p.id.slice(0, 8)}.jpg`)
-            if (r === 'downloaded') toast('写真を保存しました')
-          }}
           onRemove={async (p) => {
             await removePhoto(p.id)
             toast('写真を外しました')
             if (viewList.length <= 1) setViewerIndex(null)
-            else setViewerIndex((i) => Math.max(0, Math.min((i ?? 0), viewList.length - 2)))
+            else setViewerIndex((i) => Math.max(0, Math.min(i ?? 0, viewList.length - 2)))
           }}
         />
       )}
 
       <Sheet open={menuOpen} onClose={() => { setMenuOpen(false); setConfirmDelete(false) }} title="作品のメニュー">
+        <CorrectionControl
+          value={correction}
+          onChange={(v) => void setCorrection(work.id, v)}
+        />
+        <hr className={styles.hr} />
         <button type="button" className={ui.secondary} onClick={() => { setMenuOpen(false); setRenameOpen(true) }}>
           名前を変える
         </button>
@@ -288,6 +307,28 @@ export function WorkPage() {
         )}
       </Sheet>
 
+      <Sheet open={captured !== null} onClose={() => setCaptured(null)} title="マスに入りました">
+        <p className={styles.sheetText}>
+          アプリで撮った写真は、写真アプリには残っていません。元の画質で残しておきますか?
+        </p>
+        <button
+          type="button"
+          className={ui.primary}
+          onClick={async () => {
+            const f = captured
+            setCaptured(null)
+            if (!f) return
+            const r = await shareOrDownload(f, f.name || 'photo.jpg')
+            if (r === 'downloaded') toast('写真を保存しました')
+          }}
+        >
+          写真アプリにも保存
+        </button>
+        <button type="button" className={ui.secondary} onClick={() => setCaptured(null)}>
+          保存しない
+        </button>
+      </Sheet>
+
       <RenameSheet
         open={renameOpen}
         initial={work.title}
@@ -298,6 +339,58 @@ export function WorkPage() {
         }}
       />
     </main>
+  )
+}
+
+/** 色の補正:スイッチを入れると 30% から始まり、強さのスライダーが出る */
+function CorrectionControl({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const on = value > 0
+  const [local, setLocal] = useState(value)
+  useEffect(() => setLocal(value), [value])
+  return (
+    <div className={styles.correction}>
+      <div className={styles.switchRow}>
+        <div>
+          <div className={styles.switchLabel} id="corr-label">
+            色の補正
+          </div>
+          <div className={ui.note}>マスの色をグラデーションに寄せる(写真そのものは変わりません)</div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={on}
+          aria-labelledby="corr-label"
+          className={styles.switch}
+          data-on={on || undefined}
+          onClick={() => onChange(on ? 0 : CORRECTION_DEFAULT)}
+        >
+          <span className={styles.knob} />
+        </button>
+      </div>
+      {on && (
+        <div className={styles.sliderRow}>
+          <div className={styles.sliderHead}>
+            <label htmlFor="corr-range">強さ</label>
+            <span className={styles.sliderValue}>{local}%</span>
+          </div>
+          <input
+            id="corr-range"
+            type="range"
+            min={5}
+            max={CORRECTION_MAX}
+            step={5}
+            value={local}
+            className={styles.range}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setLocal(v)
+              onChange(v)
+            }}
+          />
+        </div>
+      )}
+    </div>
   )
 }
 

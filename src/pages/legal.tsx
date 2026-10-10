@@ -1,7 +1,7 @@
 import { DocPage } from './DocPage'
 import styles from './DocPage.module.css'
 
-const UPDATED = '2026年10月11日'
+const UPDATED = '2026年10月12日'
 const CONTACT_URL = 'https://github.com/ise-kk/tsunpic/issues'
 
 export function PrivacyPage() {
@@ -24,7 +24,7 @@ export function PrivacyPage() {
       <h2>2. 端末に保存する情報</h2>
       <ul>
         <li>
-          作品と写真(元の写真と表示用の縮小版、写真の代表色)は、利用者の端末のブラウザ内(IndexedDB)に保存されます。元の写真には、撮影時に記録された位置情報などが含まれる場合がありますが、端末の外には送信しません。
+          作品と、作品のサイズに合わせて軽くした画像(写真を描き直したもの)、写真の代表色を、利用者の端末のブラウザ内(IndexedDB)に保存します。元の写真そのものは保存しません。描き直した画像には、撮影場所(位置情報)などのメタデータは含まれません。
         </li>
         <li>案内を閉じたかどうかなどの小さな設定を、ブラウザ内(localStorage)に保存します。</li>
         <li>オフラインでも使えるように、アプリのファイルをブラウザ内に保存します。</li>
