@@ -2,6 +2,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import pkg from './package.json' with { type: 'json' }
 
 // GitHub Pages では https://ise-kk.github.io/tsunpic/ で公開されるため base を合わせる
 const BASE = '/tsunpic/'
@@ -38,6 +39,9 @@ function cspPlugin(): Plugin {
 
 export default defineConfig({
   base: BASE,
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   build: {
     // 小さなファイルを data: に埋め込むと CSP に引っかかるため、すべて別ファイルとして出す
     assetsInlineLimit: 0,
