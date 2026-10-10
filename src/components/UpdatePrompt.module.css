@@ -1,0 +1,40 @@
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(calc(100% - var(--space-8)), calc(var(--content-max) - var(--space-8)));
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+  background: var(--color-ink);
+  color: var(--color-on-ink);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+.text {
+  flex: 1;
+  font-size: var(--text-sm);
+}
+
+.later,
+.update {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-weight: var(--weight-bold);
+  cursor: pointer;
+}
+
+.later {
+  background: transparent;
+  color: var(--color-on-ink);
+}
+
+.update {
+  background: var(--color-on-ink);
+  color: var(--color-ink);
+}
