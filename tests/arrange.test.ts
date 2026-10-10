@@ -1,6 +1,7 @@
 import {
   arrange,
   chooseForGradient,
+  correctionTargets,
   diagonalPath,
   roughness,
   sortByGradient,
@@ -141,5 +142,23 @@ describe('arrange', () => {
     const path = diagonalPath(4)
     const order = path.map((k) => after.grid[k]).filter(Boolean).map((x) => x!.id)
     expect(order).toEqual(['r', 'o', 'y', 'g'])
+  })
+})
+
+describe('correctionTargets', () => {
+  it('写真のあるマスにだけ目標の色があり、空きは null', () => {
+    const items = [item('a', 230, 30, 30), item('b', 240, 140, 30), item('c', 240, 230, 40)]
+    const { grid } = arrange(items, 3)
+    const t = correctionTargets(grid, 3)
+    grid.forEach((p, i) => expect(t[i] === null).toBe(p === null))
+  })
+  it('目標の色は、隣どうしの差が元の色より小さい(なめらか)', () => {
+    const items = Array.from({ length: 36 }, (_, i) => item(`p${i}`, (i * 97) % 256, (i * 53) % 256, (i * 31) % 256))
+    const { grid } = arrange(items, 6)
+    const t = correctionTargets(grid, 6)
+    const path = diagonalPath(6)
+    const orig = path.map((k) => grid[k]!).map((p, i) => ({ id: String(i), color: p.color }))
+    const smooth = path.map((k, i) => ({ id: String(i), color: t[k]! }))
+    expect(roughness(smooth)).toBeLessThan(roughness(orig))
   })
 })
