@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } f
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { IconBack, IconCamera, IconEdit, IconMore, IconPhotos } from '../components/icons'
 import { MosaicGrid } from '../components/MosaicGrid'
+import { ProgressOverlay } from '../components/ProgressOverlay'
 import { Sheet } from '../components/Sheet'
 import { useToast } from '../components/Toast'
 import ui from '../components/ui.module.css'
@@ -24,6 +25,28 @@ import { ImageError, processPhoto, renderMosaic, shareOrDownload } from '../lib/
 import { maxPhotosFor } from '../lib/sizes'
 import styles from './WorkPage.module.css'
 
+/** 何枚読み込むごとに保存するか */
+const SAVE_EVERY = 20
+
+type Progress = { done: number; total: number; startedAt: number }
+
+/** 残り時間の目安(3枚読み込むまでは出さない) */
+function etaSeconds(p: Progress): number | null {
+  if (p.done < 3) return null
+  const per = (Date.now() - p.startedAt) / p.done / 1000
+  return per * (p.total - p.done)
+}
+
+/** 読み込み中に画面が暗くならないようにする(できないブラウザでは何もしない) */
+async function requestWakeLock(): Promise<{ release: () => Promise<void> } | null> {
+  try {
+    const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } }
+    return (await nav.wakeLock?.request('screen')) ?? null
+  } catch {
+    return null
+  }
+}
+
 export function WorkPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
@@ -32,7 +55,7 @@ export function WorkPage() {
   const photos = useLive(() => db.photos.where('workId').equals(id).sortBy('addedAt'), [id])
   const urls = useThumbUrls(photos)
 
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [progress, setProgress] = useState<Progress | null>(null)
   const [viewerIndex, setViewerIndex] = useState<number | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [renameOpen, setRenameOpen] = useState(false)
@@ -57,6 +80,9 @@ export function WorkPage() {
     [placement],
   )
 
+  const cancelRef = useRef(false)
+  const [cancelling, setCancelling] = useState(false)
+
   const handleFiles = useCallback(
     async (e: ChangeEvent<HTMLInputElement>, isCapture: boolean) => {
       const input = e.currentTarget
@@ -69,42 +95,67 @@ export function WorkPage() {
         toast(`この作品に入れられる写真は ${limit} 枚までです`)
         return
       }
-      const targetsFiles = files.slice(0, room)
+      const targetFiles = files.slice(0, room)
       const errors: string[] = []
-      const ready: NewPhoto[] = []
-      setProgress({ done: 0, total: targetsFiles.length })
-      for (const [i, file] of targetsFiles.entries()) {
-        try {
-          const p = await processPhoto(file, file.name, work.size)
-          ready.push({ ...p, captured: isCapture })
-        } catch (err) {
-          errors.push(err instanceof ImageError ? err.message : `${file.name} を読み込めませんでした`)
-        }
-        setProgress({ done: i + 1, total: targetsFiles.length })
-      }
       const benchBefore = placement.bench.length
-      let newIds: string[] = []
+      const added: string[] = []
+      let pending: NewPhoto[] = []
+      let saveFailed: string | null = null
+      cancelRef.current = false
+      setCancelling(false)
+      const startedAt = Date.now()
+      setProgress({ done: 0, total: targetFiles.length, startedAt })
+      const wake = await requestWakeLock()
+
+      // 読み込んだ写真から少しずつ保存する(途中で止まっても、そこまでの写真は残る)
+      const flush = async () => {
+        if (pending.length === 0) return
+        const batch = pending
+        pending = []
+        const ids = await addPhotos(work.id, batch)
+        added.push(...ids)
+        setLastAdded(new Set(ids))
+      }
+
       try {
-        if (ready.length > 0) newIds = await addPhotos(work.id, ready)
+        for (const [i, file] of targetFiles.entries()) {
+          if (cancelRef.current) break
+          try {
+            const p = await processPhoto(file, file.name, work.size)
+            pending.push({ ...p, captured: isCapture })
+          } catch (err) {
+            errors.push(err instanceof ImageError ? err.message : `${file.name} を読み込めませんでした`)
+          }
+          if (pending.length >= SAVE_EVERY) await flush()
+          setProgress({ done: i + 1, total: targetFiles.length, startedAt })
+        }
+        await flush()
       } catch (err) {
+        saveFailed =
+          err instanceof LimitError ? err.message : '保存できませんでした。端末の空き容量が足りない可能性があります。'
+      } finally {
+        void wake?.release().catch(() => {})
         setProgress(null)
-        toast(err instanceof LimitError ? err.message : '保存できませんでした。端末の空き容量が足りない可能性があります。')
+        setCancelling(false)
+        window.setTimeout(() => setLastAdded(new Set()), 3000)
+      }
+
+      if (saveFailed) {
+        toast(saveFailed)
         return
       }
-      setProgress(null)
-      setLastAdded(new Set(newIds))
-      window.setTimeout(() => setLastAdded(new Set()), 3000)
       const after = await db.photos.where('workId').equals(work.id).toArray()
       const benchAfter = arrange(after, work.size).bench.length
       const parts: string[] = []
-      if (ready.length > 0) parts.push(`${ready.length}枚を入れました`)
+      if (added.length > 0) parts.push(`${added.length}枚を入れました`)
+      if (cancelRef.current) parts.push('途中で止めました')
       if (benchAfter > benchBefore) parts.push(`${benchAfter - benchBefore}枚を控えに入れました`)
-      if (files.length > targetsFiles.length) parts.push(`上限のため ${files.length - targetsFiles.length}枚は入れませんでした`)
+      if (files.length > targetFiles.length) parts.push(`上限のため ${files.length - targetFiles.length}枚は入れませんでした`)
       if (errors.length > 0) parts.push(`${errors.length}枚は読み込めませんでした`)
       toast(parts.join('。') || '写真を入れられませんでした')
       if (errors.length > 0) console.warn(errors)
       // アプリで撮った写真は写真アプリに残らないので、保存をすすめる
-      if (isCapture && ready.length > 0 && targetsFiles[0]) setCaptured(targetsFiles[0])
+      if (isCapture && added.length > 0 && targetFiles[0]) setCaptured(targetFiles[0])
     },
     [work, photos, placement.bench.length, toast],
   )
@@ -254,14 +305,16 @@ export function WorkPage() {
       )}
 
       {progress && (
-        <div className={styles.overlay} role="status" aria-live="polite">
-          <div className={styles.overlayCard}>
-            <p>
-              写真を読み込み中… {progress.done} / {progress.total}
-            </p>
-            <p className={ui.note}>写真はこの端末の中だけで処理しています</p>
-          </div>
-        </div>
+        <ProgressOverlay
+          done={progress.done}
+          total={progress.total}
+          etaSec={etaSeconds(progress)}
+          cancelling={cancelling}
+          onCancel={() => {
+            cancelRef.current = true
+            setCancelling(true)
+          }}
+        />
       )}
 
       {viewerIndex !== null && viewerIndex >= 0 && (
