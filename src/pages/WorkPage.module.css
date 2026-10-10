@@ -1,0 +1,141 @@
+.titleButton {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.title {
+  max-width: 100%;
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--color-muted);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.count {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  white-space: nowrap;
+}
+
+.countTotal {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-regular);
+  color: var(--color-muted);
+}
+
+.bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--color-line);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--color-ink);
+  transition: width 0.3s ease;
+}
+
+.message {
+  font-size: var(--text-sm);
+  color: var(--color-ink-soft);
+}
+
+.bench {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-line);
+}
+
+.benchTitle {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+}
+
+.benchList {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.benchItem {
+  aspect-ratio: 1;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--color-empty);
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.benchItem img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(20, 19, 17, 0.4);
+}
+
+.overlayCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-paper);
+  border-radius: var(--radius-lg);
+  text-align: center;
+  font-weight: var(--weight-bold);
+}
+
+.renameForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.input {
+  min-height: var(--button-h);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-line-strong);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-size: var(--text-md);
+}
