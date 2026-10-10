@@ -21,3 +21,13 @@ describe('サイズごとの保存の大きさ', () => {
     expect(() => profileFor(7)).toThrow()
   })
 })
+
+import { formatEta } from '../src/components/ProgressOverlay'
+
+describe('残り時間の表示', () => {
+  it('短いときは「少し」、1分未満は10秒単位、それ以上は分単位', () => {
+    expect(formatEta(5)).toBe('少し')
+    expect(formatEta(42)).toBe('約50秒')
+    expect(formatEta(61)).toBe('約2分')
+  })
+})
