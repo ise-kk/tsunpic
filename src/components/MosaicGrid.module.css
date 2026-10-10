@@ -51,3 +51,18 @@
     opacity: 1;
   }
 }
+
+.tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: opacity 0.15s linear;
+}
+
+/* 大作ではマスの角丸と出てくる動きをなくして軽くする */
+.grid[data-big] .tile,
+.grid[data-big] .empty {
+  border-radius: 0;
+  animation: none;
+  box-shadow: none;
+}

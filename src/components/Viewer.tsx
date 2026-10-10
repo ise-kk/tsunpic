@@ -12,13 +12,12 @@ type Props = {
   onIndex: (i: number) => void
   onClose: () => void
   onRemove: (photo: Photo) => void
-  onSaveOriginal: (photo: Photo) => void
 }
 
-// 1枚をじっくり見る(元の画質で表示)
-export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove, onSaveOriginal }: Props) {
+// 1枚をじっくり見る(作品のサイズに合わせた画質で表示)
+export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove }: Props) {
   const photo = photos[index]
-  const url = useBlobUrl(photo?.original)
+  const url = useBlobUrl(photo?.image ?? photo?.thumb)
   const [confirming, setConfirming] = useState(false)
   const closeRef = useRef<HTMLButtonElement>(null)
   const touchX = useRef<number | null>(null)
@@ -88,11 +87,6 @@ export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove, o
       </div>
 
       <div className={styles.actions}>
-        {photo.captured && (
-          <button type="button" className={styles.action} onClick={() => onSaveOriginal(photo)}>
-            写真アプリに保存
-          </button>
-        )}
         {confirming ? (
           <button type="button" className={`${styles.action} ${styles.danger}`} onClick={() => onRemove(photo)}>
             本当に外す(元に戻せません)
