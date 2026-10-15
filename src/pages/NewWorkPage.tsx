@@ -73,7 +73,7 @@ export function NewWorkPage() {
         <div>
           <dt>1枚ずつの見え方</dt>
           <dd>
-            {profile.viewLabel}(長辺{profile.viewPx}px)
+            {profile.viewPx !== null ? `${profile.viewLabel}(長辺${profile.viewPx}px)` : profile.viewLabel}
           </dd>
         </div>
         <div>

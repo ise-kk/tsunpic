@@ -1,4 +1,4 @@
-import { approxMb, maxPhotosFor, profileFor, SIZE_OPTIONS } from '../src/lib/sizes'
+import { approxMb, exportTilePx, maxPhotosFor, profileFor, SIZE_OPTIONS, SIZE_PROFILES } from '../src/lib/sizes'
 
 describe('サイズごとの保存の大きさ', () => {
   it('9枚〜900枚まで選べる', () => {
@@ -7,12 +7,27 @@ describe('サイズごとの保存の大きさ', () => {
   it('大きな作品ほど1枚を軽くする', () => {
     const sizes = SIZE_OPTIONS.map(profileFor)
     for (let i = 1; i < sizes.length; i++) {
-      expect(sizes[i]!.viewPx).toBeLessThanOrEqual(sizes[i - 1]!.viewPx)
       expect(sizes[i]!.thumbPx).toBeLessThanOrEqual(sizes[i - 1]!.thumbPx)
+      expect(sizes[i]!.approxKb).toBeLessThanOrEqual(sizes[i - 1]!.approxKb)
     }
   })
-  it('900枚の作品でも保存の目安は 30MB 以下', () => {
-    expect(approxMb(30)).toBeLessThan(30)
+  it('1枚ずつ見るサイズは鑑賞用の画像を作り、遠くから見るサイズは作らない', () => {
+    for (const p of SIZE_PROFILES) {
+      if (p.group === 'view') expect(p.viewPx).toBeGreaterThan(p.thumbPx)
+      else {
+        expect(p.viewPx).toBeNull()
+        expect(p.squareThumb).toBe(true)
+      }
+    }
+  })
+  it('900枚の作品でも保存の目安は 5MB 以下', () => {
+    expect(approxMb(30)).toBeLessThan(5)
+    expect(approxMb(20)).toBeLessThan(5)
+  })
+  it('書き出し画像は軽くしても 1辺 1500px 以上を保つ', () => {
+    for (const p of SIZE_PROFILES.filter((x) => x.group === 'far')) {
+      expect(p.size * exportTilePx(p)).toBeGreaterThanOrEqual(1500)
+    }
   })
   it('上限はマスの数 + 100枚', () => {
     expect(maxPhotosFor(30)).toBe(1000)

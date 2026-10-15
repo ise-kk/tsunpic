@@ -12,10 +12,15 @@ type Props = {
   onIndex: (i: number) => void
   onClose: () => void
   onRemove: (photo: Photo) => void
+  /**
+   * 遠くから見るサイズの作品で、小さな画像だけを保存しているときの表示の大きさ(px)。
+   * 画面いっぱいに引き伸ばすと粗く見えるので、この大きさで見せる。
+   */
+  compactPx?: number
 }
 
 // 1枚をじっくり見る(作品のサイズに合わせた画質で表示)
-export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove }: Props) {
+export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove, compactPx }: Props) {
   const photo = photos[index]
   const url = useBlobUrl(photo?.image ?? photo?.thumb)
   const [confirming, setConfirming] = useState(false)
@@ -39,6 +44,7 @@ export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove }:
 
   if (!photo) return null
   const isBench = index >= benchFrom
+  const compact = compactPx !== undefined && !photo.image
 
   return (
     <div className={styles.viewer} role="dialog" aria-modal="true" aria-label="写真を大きく見る">
@@ -68,7 +74,14 @@ export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove }:
           if (dx < -60 && index < photos.length - 1) onIndex(index + 1)
         }}
       >
-        {url && <img src={url} alt={`${index + 1}枚目の写真`} className={styles.photo} />}
+        {url && (
+          <img
+            src={url}
+            alt={`${index + 1}枚目の写真`}
+            className={compact ? styles.small : styles.photo}
+            style={compact ? { width: compactPx, height: compactPx } : undefined}
+          />
+        )}
         {index > 0 && (
           <button type="button" className={`${styles.nav} ${styles.prev}`} onClick={() => onIndex(index - 1)} aria-label="前の写真">
             <IconChevronLeft />
@@ -85,6 +98,8 @@ export function Viewer({ photos, index, benchFrom, onIndex, onClose, onRemove }:
         <span className={styles.chip} style={{ background: labToCss(photo.color) }} aria-hidden="true" />
         <span>{isBench ? 'グラデーションに合いにくいため控えにあります' : 'この写真の色でならんでいます'}</span>
       </div>
+
+      {compact && <p className={styles.note}>遠くから見て楽しむサイズなので、モザイク用の小さな画像だけを保存しています</p>}
 
       <div className={styles.actions}>
         {confirming ? (

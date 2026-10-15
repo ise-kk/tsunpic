@@ -51,6 +51,21 @@
   user-select: none;
 }
 
+/* 遠くから見るサイズ:小さな画像を引き伸ばさずに見せる */
+.small {
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  user-select: none;
+}
+
+.note {
+  margin: 0;
+  padding: 0 var(--space-5) var(--space-3);
+  font-size: var(--text-sm);
+  color: #a7a196;
+}
+
 .nav {
   position: absolute;
   top: 50%;

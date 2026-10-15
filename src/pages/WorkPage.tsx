@@ -22,7 +22,7 @@ import {
 } from '../db/repo'
 import { arrange, correctionTargets } from '../lib/arrange'
 import { ImageError, processPhoto, renderMosaic, shareOrDownload } from '../lib/image'
-import { maxPhotosFor } from '../lib/sizes'
+import { maxPhotosFor, profileFor } from '../lib/sizes'
 import styles from './WorkPage.module.css'
 
 /** 何枚読み込むごとに保存するか */
@@ -45,6 +45,12 @@ async function requestWakeLock(): Promise<{ release: () => Promise<void> } | nul
   } catch {
     return null
   }
+}
+
+/** 遠くから見るサイズでは、鑑賞画面で小さな画像をこの大きさで見せる(1枚ずつ見るサイズでは undefined) */
+function farCompactPx(size: number): number | undefined {
+  const p = profileFor(size)
+  return p.viewPx === null ? Math.max(p.thumbPx, 128) : undefined
 }
 
 export function WorkPage() {
@@ -324,6 +330,7 @@ export function WorkPage() {
           benchFrom={viewList.length - placement.bench.length}
           onIndex={setViewerIndex}
           onClose={() => setViewerIndex(null)}
+          compactPx={farCompactPx(size)}
           onRemove={async (p) => {
             await removePhoto(p.id)
             toast('写真を外しました')

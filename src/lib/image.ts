@@ -4,7 +4,7 @@
  * 元の写真は保存しない。描き直した軽い画像だけを作るので、位置情報などのメタデータは含まれない。
  */
 import { dominantColor, labToCss, type Lab } from './color'
-import { profileFor } from './sizes'
+import { exportTilePx, profileFor } from './sizes'
 
 /** 1枚あたりの上限(これより大きいファイルは受け付けない) */
 export const MAX_FILE_BYTES = 50 * 1024 * 1024
@@ -27,8 +27,11 @@ export async function processPhoto(file: Blob, name: string, size: number): Prom
   })
   try {
     const profile = profileFor(size)
-    const thumb = await resizeToBlob(img, profile.thumbPx, 0.82)
-    const image = profile.viewPx > profile.thumbPx ? await resizeToBlob(img, profile.viewPx, 0.85) : undefined
+    // 遠くから見るサイズは、マス目と同じ正方形の小さな画像だけを作る(鑑賞用の画像は作らない)
+    const thumb = profile.squareThumb
+      ? await squareToBlob(img, profile.thumbPx, 0.8)
+      : await resizeToBlob(img, profile.thumbPx, 0.82)
+    const image = profile.viewPx !== null ? await resizeToBlob(img, profile.viewPx, 0.85) : undefined
 
     // 色を調べる用の小さな画像(正方形に切り抜く)
     const sample = makeCanvas(SAMPLE_SIZE, SAMPLE_SIZE)
@@ -64,6 +67,18 @@ async function resizeToBlob(img: HTMLImageElement, longSide: number, quality: nu
   if (!ctx) throw new ImageError('画像の処理に失敗しました')
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(img, 0, 0, w, h)
+  return canvasToBlob(canvas, 'image/jpeg', quality)
+}
+
+/** 中央を正方形に切り抜いて side×side の JPEG にする(元が小さければ拡大しない) */
+async function squareToBlob(img: HTMLImageElement, side: number, quality: number): Promise<Blob> {
+  const src = Math.min(img.naturalWidth, img.naturalHeight)
+  const out = Math.max(1, Math.min(side, src))
+  const canvas = makeCanvas(out, out)
+  const ctx = canvas.getContext('2d')
+  if (!ctx) throw new ImageError('画像の処理に失敗しました')
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(img, (img.naturalWidth - src) / 2, (img.naturalHeight - src) / 2, src, src, 0, 0, out, out)
   return canvasToBlob(canvas, 'image/jpeg', quality)
 }
 
@@ -107,8 +122,7 @@ export async function renderMosaic(
   strength = 0,
 ): Promise<Blob> {
   const profile = profileFor(size)
-  // 縮小版の短い辺に合わせる(4:3 の写真なら長辺の 3/4)
-  const tilePx = Math.round(profile.thumbPx * 0.75)
+  const tilePx = exportTilePx(profile)
   const gap = size >= 20 ? 0 : Math.max(1, Math.round(tilePx * 0.02))
   const full = size * tilePx + (size - 1) * gap
   const canvas = makeCanvas(full, full)
